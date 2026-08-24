@@ -214,7 +214,10 @@ func (e *Engine) List(ctx context.Context, stage string, limit int) ([]Record, e
 		if stage != "" && record.Stage != stage {
 			continue
 		}
-		result = append(result, record)
+		// Clone before returning so callers cannot mutate the stored record's
+		// Evidence/History slices through the list result. The map value's
+		// slice headers are otherwise shared with the live store.
+		result = append(result, cloneRecord(record))
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.After(result[j].UpdatedAt) })
 	if limit > 0 && len(result) > limit {
