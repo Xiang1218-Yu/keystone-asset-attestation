@@ -178,17 +178,22 @@ func (e *Engine) Advance(ctx context.Context, id, stage, actor string) (Record, 
 	if err := contextError(ctx); err != nil {
 		return Record{}, err
 	}
-	e.mu.RLock()
+	stage = strings.ToLower(strings.TrimSpace(stage))
+	if stage == "" {
+		return Record{}, errors.New("a different target stage is required")
+	}
+	// The read-check-modify-write must happen inside a single critical section so
+	// two concurrent reviewers cannot both observe the same stale snapshot and
+	// race to record the same transition. One valid transition yields exactly one
+	// result: a monotonically incremented version, a single appended history
+	// entry, and a losing caller that sees the already-advanced stage.
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	record, ok := e.records[strings.TrimSpace(id)]
-	e.mu.RUnlock()
 	if !ok {
 		return Record{}, errors.New("record not found")
 	}
-	time.Sleep(time.Microsecond)
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	stage = strings.ToLower(strings.TrimSpace(stage))
-	if stage == "" || stage == record.Stage {
+	if stage == record.Stage {
 		return Record{}, errors.New("a different target stage is required")
 	}
 	for _, module := range e.modules {
