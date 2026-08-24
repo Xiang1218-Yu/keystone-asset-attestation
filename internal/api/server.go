@@ -24,9 +24,14 @@ func New(engine *core.Engine, logger *slog.Logger) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	wrapped := recoverPanic(requestLog(s.logger, s.mux))
-	handler := wrapped
-	return handler
+	// Order matters: requestLog is the outermost wrapper so that the log
+	// layer's deferred record always fires, including for requests that
+	// panic. recoverPanic runs inside it, which puts the recovery lifetime
+	// within the log wrapper — the statusRecorder that requestLog owns is
+	// the same writer recoverPanic writes the 500 to, so the log line reports
+	// the real outcome. A recovered panic is absorbed here and never reaches
+	// the caller as a crash.
+	return requestLog(s.logger, recoverPanic(s.logger, s.mux))
 }
 
 func (s *Server) routes() {
