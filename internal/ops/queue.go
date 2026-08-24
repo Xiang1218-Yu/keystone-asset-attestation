@@ -64,8 +64,14 @@ func (q *Queue) worker() {
 		case <-q.ctx.Done():
 			return
 		case job := <-q.jobs:
-			handlers := q.handlers
-			handler := handlers[job.Name]
+			// Snapshot the handler under the read lock so the map lookup is
+			// never concurrent with Register's write. The lock is released
+			// before invoking the handler so that an administrator can keep
+			// (re)registering handlers during a long-running job without
+			// blocking on it, and an already-dispatched job still executes.
+			q.mu.RLock()
+			handler := q.handlers[job.Name]
+			q.mu.RUnlock()
 			if handler != nil {
 				_ = handler(q.ctx, job)
 			}
