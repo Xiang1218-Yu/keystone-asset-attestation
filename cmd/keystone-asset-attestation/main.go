@@ -24,12 +24,17 @@ func main() {
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second,
 		WriteTimeout: 20 * time.Second, IdleTimeout: 45 * time.Second,
 	}
+	queue := ops.NewQueue(32, config.Workers)
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	go func() {
 		<-ctx.Done()
 		shutdown, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
+		// Stop the background queue first so in-flight tasks receive the
+		// cancellation signal and return promptly, instead of holding the
+		// shutdown hostage until the timeout fires.
+		queue.Stop()
 		_ = httpServer.Shutdown(shutdown)
 	}()
 	logger.Info("keystone-asset-attestation listening", "addr", httpServer.Addr, "initial_stage", "captured", "modules", len(engine.Modules()))

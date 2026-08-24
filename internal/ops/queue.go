@@ -45,6 +45,11 @@ func (q *Queue) Register(name string, handler Handler) {
 
 func (q *Queue) Submit(job Job) bool {
 	select {
+	case <-q.ctx.Done():
+		return false
+	default:
+	}
+	select {
 	case q.jobs <- job:
 		return true
 	default:
@@ -68,9 +73,10 @@ func (q *Queue) worker() {
 			handler := q.handlers[job.Name]
 			q.mu.RUnlock()
 			if handler != nil {
-				handlerContext := q.ctx
-				_ = handler(context.Background(), job)
-				_ = handlerContext
+				// Run the handler under the queue's context so that Stop
+				// cancels in-flight tasks instead of leaving them on a
+				// never-cancelable context.Background() to time out.
+				_ = handler(q.ctx, job)
 			}
 		}
 	}
