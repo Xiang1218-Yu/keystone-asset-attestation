@@ -24,7 +24,13 @@ func New(engine *core.Engine, logger *slog.Logger) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return requestLog(s.logger, s.mux)
+	// Order matters: requestLog is the outermost layer (it records the total
+	// request duration even when the handler panics), and recoverPanic wraps the
+	// mux directly so any panic from a module handler is contained to that one
+	// request instead of crashing the process. Before this, recoverPanic existed
+	// but was never wired in, so a panicking handler bubbled the panic to the
+	// caller and left the shared engine unusable for later requests.
+	return requestLog(s.logger, recoverPanic(s.logger, s.mux))
 }
 
 func (s *Server) routes() {
