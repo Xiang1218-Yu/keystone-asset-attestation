@@ -138,15 +138,15 @@ func (e *Engine) Create(ctx context.Context, id, payload, actor string) (Record,
 	if id == "" || strings.TrimSpace(payload) == "" {
 		return Record{}, errors.New("id and payload are required")
 	}
-	e.mu.RLock()
-	_, exists := e.records[id]
-	e.mu.RUnlock()
-	if exists {
-		return Record{}, errors.New("record already exists")
-	}
-	time.Sleep(time.Microsecond)
+	// The existence check and the write must happen under the same write
+	// lock, otherwise two concurrent collectors that both observe the id is
+	// absent can each proceed to create the record, producing duplicate
+	// successful creates while only the last write survives in the map.
 	e.mu.Lock()
 	defer e.mu.Unlock()
+	if _, exists := e.records[id]; exists {
+		return Record{}, errors.New("record already exists")
+	}
 	now := time.Now().UTC()
 	result := Record{ID: id, Stage: "captured", Payload: strings.TrimSpace(payload), Version: 1, CreatedAt: now, UpdatedAt: now}
 	for _, module := range e.modules {
