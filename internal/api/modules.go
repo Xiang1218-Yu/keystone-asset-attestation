@@ -5,6 +5,9 @@ import (
 )
 
 func (s *Server) modules(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEngine(w) {
+		return
+	}
 	values := make([]map[string]any, 0)
 	modules := s.engine.Modules()
 	count := len(modules)
@@ -19,5 +22,8 @@ func (s *Server) modules(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) snapshot(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEngine(w) {
+		return
+	}
 	writeJSON(w, http.StatusOK, s.engine.Snapshot())
 }

@@ -16,6 +16,9 @@ type advanceInput struct {
 }
 
 func (s *Server) listRecords(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEngine(w) {
+		return
+	}
 	records, err := s.engine.List(r.Context(), r.URL.Query().Get("stage"), limit(r.URL.Query().Get("limit"), 100))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -29,6 +32,9 @@ func (s *Server) createRecord(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &input) {
 		return
 	}
+	if !s.requireEngine(w) {
+		return
+	}
 	record, err := s.engine.Create(r.Context(), input.ID, input.Payload, actor(r))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -38,6 +44,9 @@ func (s *Server) createRecord(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getRecord(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEngine(w) {
+		return
+	}
 	record, err := s.engine.Get(r.Context(), r.PathValue("id"))
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
@@ -49,6 +58,9 @@ func (s *Server) getRecord(w http.ResponseWriter, r *http.Request) {
 func (s *Server) advanceRecord(w http.ResponseWriter, r *http.Request) {
 	var input advanceInput
 	if !decode(w, r, &input) {
+		return
+	}
+	if !s.requireEngine(w) {
 		return
 	}
 	record, err := s.engine.Advance(r.Context(), r.PathValue("id"), input.Stage, actor(r))

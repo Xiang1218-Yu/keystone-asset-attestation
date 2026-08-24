@@ -11,6 +11,9 @@ func (s *Server) validate(w http.ResponseWriter, r *http.Request) {
 	if !decode(w, r, &input) {
 		return
 	}
+	if !s.requireEngine(w) {
+		return
+	}
 	score, warnings, err := s.engine.ValidatePayload(r.Context(), input.Payload)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())

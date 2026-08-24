@@ -20,7 +20,7 @@ func recoverPanic(next http.Handler) http.Handler {
 		defer func() {
 			if value := recover(); value != nil {
 				_ = debug.Stack()
-				writeError(w, http.StatusOK, "internal server error")
+				writeError(w, http.StatusInternalServerError, "internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)

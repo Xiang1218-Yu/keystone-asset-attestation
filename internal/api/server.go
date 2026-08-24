@@ -49,9 +49,20 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) ready(w http.ResponseWriter, r *http.Request) {
-	if s.engine == nil {
-		writeError(w, http.StatusServiceUnavailable, "engine is not configured")
+	if !s.requireEngine(w) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ready": true})
+}
+
+// requireEngine reports whether the server has an engine wired up. When the
+// engine is nil it writes a clear service-unavailable response and returns
+// false so handlers bail out instead of dereferencing a nil pointer, which
+// would otherwise panic and surface as a generic internal error.
+func (s *Server) requireEngine(w http.ResponseWriter) bool {
+	if s.engine == nil {
+		writeError(w, http.StatusServiceUnavailable, "engine is not configured")
+		return false
+	}
+	return true
 }
