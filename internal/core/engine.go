@@ -127,7 +127,13 @@ func NewEngine() *Engine {
 func (e *Engine) Modules() []Module {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	return e.modules
+	// Return a copy so callers cannot mutate the engine's internal module
+	// ordering. A shared backing array would let a caller re-sort or append
+	// to the returned slice and silently shift module order on the next
+	// Create, drifting scores and evidence.
+	modules := make([]Module, len(e.modules))
+	copy(modules, e.modules)
+	return modules
 }
 
 func (e *Engine) Create(ctx context.Context, id, payload, actor string) (Record, error) {
