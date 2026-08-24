@@ -242,6 +242,8 @@ func (e *Engine) ValidatePayload(ctx context.Context, payload string) (int, []st
 }
 
 func (e *Engine) Snapshot() map[string]int {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
 	snapshot := map[string]int{"modules": len(e.modules), "records": len(e.records)}
 	for _, record := range e.records {
 		snapshot["stage_"+record.Stage]++
