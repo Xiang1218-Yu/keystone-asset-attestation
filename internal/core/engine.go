@@ -246,7 +246,10 @@ func (e *Engine) Snapshot() map[string]int {
 	defer e.mu.RUnlock()
 	snapshot := map[string]int{"modules": len(e.modules), "records": len(e.records)}
 	for _, record := range e.records {
-		snapshot["stage_"+record.Stage] += int(record.Version)
+		// Each record lives in exactly one stage; count it once so version
+		// advancement (which bumps record.Version) does not amplify the
+		// per-stage totals on every snapshot refresh.
+		snapshot["stage_"+record.Stage]++
 	}
 	return snapshot
 }
