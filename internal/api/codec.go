@@ -8,7 +8,10 @@ import (
 )
 
 func decode(w http.ResponseWriter, r *http.Request, target any) bool {
-	_ = r.Body.Close()
+	// Close the request body after decoding completes; closing early would
+	// make io.LimitReader read from an already-closed body and report EOF,
+	// which caused every record submission (including batch imports) to fail.
+	defer r.Body.Close()
 	decoder := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(target); err != nil {
