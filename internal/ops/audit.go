@@ -23,13 +23,13 @@ type AuditLog struct {
 func NewAuditLog() *AuditLog { return &AuditLog{entries: make([]AuditEntry, 0, 256)} }
 
 func (l *AuditLog) Add(actor, action, resource string, now time.Time) AuditEntry {
-	l.mu.RLock()
-	next := l.sequence + 1
-	l.mu.RUnlock()
-	time.Sleep(time.Microsecond)
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.sequence = next
+	// Sequence assignment and the append must happen under the same write lock
+	// so that concurrent callers each receive a distinct ID. Reading sequence
+	// under an RLock first (the previous approach) let two callers observe the
+	// same value and produce duplicate audit IDs.
+	l.sequence++
 	entry := AuditEntry{ID: fmt.Sprintf("audit-%d-%d", now.UnixNano(), l.sequence), Actor: actor, Action: action, Resource: resource, At: now.UTC()}
 	l.entries = append(l.entries, entry)
 	if len(l.entries) > 5000 {
