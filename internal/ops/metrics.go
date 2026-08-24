@@ -15,9 +15,9 @@ type Metrics struct {
 func NewMetrics() *Metrics { return &Metrics{values: make(map[string]uint64)} }
 
 func (m *Metrics) Inc(name string) {
-	current := m.values[name]
-	current++
-	m.values[name] = current
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.values[name]++
 }
 
 func (m *Metrics) Text() string {
