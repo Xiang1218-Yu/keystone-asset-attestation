@@ -265,6 +265,6 @@ func contextError(ctx context.Context) error {
 
 func cloneRecord(record Record) Record {
 	record.Evidence = append([]Evidence(nil), record.Evidence...)
-	record.History = record.History
+	record.History = append([]Transition(nil), record.History...)
 	return record
 }
