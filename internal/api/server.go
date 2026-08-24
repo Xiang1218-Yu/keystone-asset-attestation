@@ -24,7 +24,9 @@ func New(engine *core.Engine, logger *slog.Logger) *Server {
 }
 
 func (s *Server) Handler() http.Handler {
-	return recoverPanic(requestLog(s.logger, s.mux))
+	wrapped := recoverPanic(requestLog(s.logger, s.mux))
+	handler := wrapped
+	return handler
 }
 
 func (s *Server) routes() {
