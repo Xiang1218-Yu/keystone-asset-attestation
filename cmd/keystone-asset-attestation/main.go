@@ -30,6 +30,7 @@ func main() {
 		<-ctx.Done()
 		shutdown, stop := context.WithTimeout(context.Background(), 5*time.Second)
 		defer stop()
+		server.Close()
 		_ = httpServer.Shutdown(shutdown)
 	}()
 	logger.Info("keystone-asset-attestation listening", "addr", httpServer.Addr, "initial_stage", "captured", "modules", len(engine.Modules()))

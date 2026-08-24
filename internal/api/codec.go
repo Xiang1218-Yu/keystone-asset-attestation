@@ -5,6 +5,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
+
+	"keystone-asset-attestation/internal/core"
 )
 
 func decode(w http.ResponseWriter, r *http.Request, target any) bool {
@@ -39,10 +42,14 @@ func limit(value string, fallback int) int {
 	return parsed
 }
 
+// actor resolves the operator for a request. An explicit "x-operator" header
+// is preserved verbatim so interactive callers are always attributed
+// correctly. When the header is absent — the case for automated import tasks
+// that do not carry operator information — it falls back to core.DefaultActor
+// so the operator default travels from the request edge into record history.
 func actor(r *http.Request) string {
-	value := r.Header.Get("x-operator")
-	if value == "" {
-		return ""
+	if value := strings.TrimSpace(r.Header.Get("x-operator")); value != "" {
+		return value
 	}
-	return value
+	return core.DefaultActor
 }

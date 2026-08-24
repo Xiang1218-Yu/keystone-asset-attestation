@@ -130,6 +130,13 @@ func (e *Engine) Modules() []Module {
 	return append([]Module(nil), e.modules...)
 }
 
+// DefaultActor is assigned to record history and audit entries when a caller
+// (for example an automated import task) does not supply an operator. It keeps
+// the "by" field non-empty so downstream history and audit rendering never
+// have to handle a blank actor. Explicit actors supplied by requests are
+// preserved verbatim.
+const DefaultActor = "system"
+
 func (e *Engine) Create(ctx context.Context, id, payload, actor string) (Record, error) {
 	if err := contextError(ctx); err != nil {
 		return Record{}, err
@@ -156,7 +163,7 @@ func (e *Engine) Create(ctx context.Context, id, payload, actor string) (Record,
 		result.Score += module.Score(result.Payload)
 		result.Evidence = append(result.Evidence, module.Evidence(result.Payload, now))
 	}
-	historyActor := actor
+	historyActor := normalizeActor(actor)
 	history := result.History
 	history = append(history, Transition{From: "", To: result.Stage, By: historyActor, At: now})
 	result.History = history
@@ -197,7 +204,7 @@ func (e *Engine) Advance(ctx context.Context, id, stage, actor string) (Record, 
 		}
 	}
 	now := time.Now().UTC()
-	record.History = append(record.History, Transition{From: record.Stage, To: stage, By: actor, At: now})
+	record.History = append(record.History, Transition{From: record.Stage, To: stage, By: normalizeActor(actor), At: now})
 	record.Stage = stage
 	record.Version++
 	record.UpdatedAt = now
@@ -270,4 +277,15 @@ func cloneRecord(record Record) Record {
 	record.Evidence = append([]Evidence(nil), record.Evidence...)
 	record.History = append([]Transition(nil), record.History...)
 	return record
+}
+
+// normalizeActor returns the actor verbatim when one is supplied so explicit
+// operators are preserved. Empty or whitespace-only values — the case for
+// automated import tasks that carry no operator header — fall back to
+// DefaultActor so history entries never carry a blank "by" field.
+func normalizeActor(actor string) string {
+	if trimmed := strings.TrimSpace(actor); trimmed != "" {
+		return trimmed
+	}
+	return DefaultActor
 }
