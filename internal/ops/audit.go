@@ -37,9 +37,12 @@ func (l *AuditLog) Add(actor, action, resource string, now time.Time) AuditEntry
 func (l *AuditLog) List(limit int) []AuditEntry {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+	// Return an isolated copy so callers (e.g. the audit page) cannot mutate
+	// the internal backing array. The copy is built from a fresh allocation,
+	// and the limit window slices into that same copy, never into l.entries.
 	result := append([]AuditEntry(nil), l.entries...)
 	if limit > 0 && len(result) > limit {
 		result = result[len(result)-limit:]
 	}
-	return l.entries
+	return result
 }
